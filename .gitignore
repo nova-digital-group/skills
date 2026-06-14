@@ -1,0 +1,36 @@
+# Secrets — never commit API keys
+.env
+.env.*
+*.key
+
+# Generated media (sample outputs)
+outputs/
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.wav
+*.mp3
+*.mp4
+# ...but keep any intentionally-committed example assets:
+!**/assets/**
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Local agent tooling / skills installed by `npx skills` (vendored, regenerable
+# from skills-lock.json — like node_modules). Keep skills-lock.json committed.
+.claude/
+.agents/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
