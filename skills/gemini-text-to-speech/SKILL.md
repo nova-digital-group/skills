@@ -118,11 +118,28 @@ The speaker names in the config **must match** the `Name:` labels in the prompt.
 You direct *how* it speaks in plain language, inline with the text:
 
 - **Style:** `"Say in a spooky whisper: ..."`, `"Read this like an excited sports announcer: ..."`
+- **Accent:** describe it in the style direction — `"with a London Brixton accent"`. There is **no language/accent parameter**; accents are triggered by the prompt.
 - **Per-speaker (multi):** `"Make Joe sound tired and bored, and Jane sound thrilled."`
-- **Inline audio tags** steer delivery mid-sentence: `[whispers]`, `[shouting]`, `[laughs]`, `[sighs]`, `[excited]`, `[sarcastic]`, `[tired]`, plus pacing like `[very fast]`. Example: `"[whispers] I have a secret... [shouting] but I can't keep it in!"`
+- **Inline audio tags** steer delivery mid-sentence. 3.1 Flash TTS supports **200+** of them: emotion (`[excited]`, `[sarcastic]`, `[tired]`, `[awe]`, `[nervousness]`), sounds (`[laughs]`, `[sighs]`, `[gasp]`, `[cough]`), pacing (`[slow]`, `[fast]`), pauses (`[short pause]`, `[long pause]`), even character (`[like dracula]`). Example: `"[whispers] I have a secret... [long pause] [shouting] but I can't keep it in!"`
+
+> **Never place two tags back-to-back** (`[slow][whispers]`) — separate them
+> with text or punctuation, or the model errors. Put each tag exactly where the
+> change should happen, woven into the words.
 
 See `references/prompting.md` for the recommended 4-part structure (Audio
 Profile → Scene → Director's Notes → Transcript) and the full tag list.
+
+## Recipes by use case
+
+| Job | Model | Approach |
+|-----|-------|----------|
+| Audiobook / long narration | `gemini-2.5-pro-preview-tts` | Pick a warm, even voice (Sulafat, Schedar); chunk per chapter and concatenate; minimal tags for naturalness. |
+| Podcast / two-host dialogue | 3.1 Flash | Two speakers, distinct voices; per-speaker direction; conversational tags (`[laughs]`, `[short pause]`). |
+| IVR / phone prompts / alerts | 3.1 Flash | A clear, firm voice (Kore, Charon); plain, unhurried delivery; short scripts. |
+| E-learning / explainer VO | 3.1 Flash | A knowledgeable, friendly voice (Sadaltager, Achird); steady pace; `[short pause]` between points. |
+| Game / character lines | 3.1 Flash | Character tags + persona in the Director's Notes; expressive voices (Fenrir, Puck). |
+| Accessibility / audio descriptions | 3.1 Flash | Neutral, even delivery; avoid heavy emotion; keep pace measured. |
+| Multilingual content | 3.1 Flash | Write the body in the target language; keep audio tags in **English**; language is auto-detected. |
 
 ## Things to know
 

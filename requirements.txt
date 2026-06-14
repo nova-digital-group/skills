@@ -1,5 +1,6 @@
 # Official Google GenAI SDK (the deprecated package is `google-generativeai` — do not use it)
 google-genai>=1.0.0
 
-# Image handling for the image-generation skill (part.as_image() returns a PIL image)
+# Image handling for the image-generation skill (part.as_image() needs Pillow;
+# the object it returns exposes .save(path) regardless of SDK version)
 pillow>=10.0.0

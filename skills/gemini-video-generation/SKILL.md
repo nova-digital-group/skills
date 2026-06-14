@@ -129,12 +129,27 @@ relying on them. EU/UK/CH/MENA are restricted to `"allow_adult"`.
 - **SynthID watermark** is embedded in all output.
 - **Extension** (Veo 3.1 / Fast only) can grow a clip up to ~148s at 720p; pass the prior `video=` back in. Lite can't extend.
 
+## Recipes by use case
+
+| Job | Model | Key moves |
+|-----|-------|-----------|
+| Social vertical (Reels/Shorts/TikTok) | Fast | `aspect_ratio="9:16"`; punchy single action; hook in the first second. |
+| Ad / product spot | Standard (hero) or Fast (volume) | Image-to-video from a clean product still; quoted tagline; `SFX:` for the beat. |
+| B-roll / establishing shot | Fast | Crane/aerial/tracking camera move; rich ambient audio; no dialogue. |
+| Character dialogue scene | Standard | Reference images for consistent characters; short quoted lines; reaction shots. |
+| Animate a still / artwork | any | Pass the image as `image=`; describe only the *motion + camera + audio*. |
+| Reveal / transformation | Standard | First/last-frame interpolation (`image=` + `last_frame=`). |
+| Longer narrative (>8s) | Standard / Fast | Timestamp-blocked prompt, then **extend** the clip (720p, up to ~148s). |
+| Cheap drafts / iteration | Lite | `veo-3.1-lite-generate-preview` — no 4K/extension, ~half the cost. |
+
 ## Prompting essentials
 
-Build a descriptive shot: **Subject + Action + Scene + Camera + Composition +
-Lighting/Ambiance + Style + Audio cues.** Put dialogue in quotes; describe SFX
-and ambience explicitly. For negatives, list nouns to exclude — don't write
-"no" or "don't." Full guide and worked examples in `references/prompting.md`.
+Build a descriptive shot with Google's 5-part formula: **Cinematography +
+Subject + Action + Context + Style & Ambiance.** Put dialogue in quotes; label
+sound with `SFX:` and `Ambient noise:`. For negatives, list nouns to exclude —
+don't write "no" or "don't." For tight pacing, block the prompt by timecode
+(`[00:00-00:03] …`). Full guide, the 5-part formula, timestamp prompting,
+first/last-frame morphs, and worked examples in `references/prompting.md`.
 
 ## More detail
 

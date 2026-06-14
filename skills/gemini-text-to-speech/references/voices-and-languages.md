@@ -12,9 +12,15 @@
 | Gemini 2.5 Flash TTS | `gemini-2.5-flash-preview-tts` | Predecessor flash model. |
 
 All are `-preview` (no GA TTS id yet). Token limits for 3.1 Flash TTS:
-**8,192 input** / **16,384 output** tokens. Audio output tokenizes at ~25
-tokens/second, so 16,384 output tokens ≈ ~11 minutes — but quality and
-consistency drift past a few minutes, so chunk long scripts.
+**8,192 input** / **16,384 output** tokens. Audio output tokenizes at **~32
+tokens/second**, so 16,384 output tokens ≈ ~8.5 minutes — but quality and
+consistency drift past a few minutes, so chunk long scripts. (The guide also
+mentions a separate ~32k-token *session* context window — a different figure.)
+
+For real-time / interactive voice (audio-in → audio-out), these one-shot TTS
+models are the wrong tool — use the **Live API** models instead, e.g.
+`gemini-3.1-flash-live-preview` or `gemini-2.5-flash-native-audio-preview-12-2025`.
+Those stream and converse; the TTS models only do text-in → audio-out.
 
 ## Audio output format (critical)
 
@@ -75,7 +81,7 @@ For multilingual or non-English transcripts, keep the inline audio tags
 - **Single-speaker and multi-speaker** (max **2 speakers**). Speaker names in the config must match the `Name:` labels in the transcript.
 - **Natural-language control** of style, tone, accent, pace, emotion — inline in the prompt.
 - **200+ inline audio tags** for fine delivery control (see `prompting.md`).
-- **No streaming / Live API / function calling / thinking** on the TTS models — they are text-in, audio-out only. (For real-time conversational audio, use the separate Live models.)
+- **No streaming** on the TTS models (explicitly documented). Function calling and thinking are not documented for them either — treat them as text-in, audio-out only. For real-time conversational audio, use the separate **Live API** models (see above).
 - **SynthID watermark** embedded in all output.
 
 ## Pricing (per 1M tokens; input = text, output = audio)
@@ -86,5 +92,6 @@ For multilingual or non-English transcripts, keep the inline audio tags
 | `gemini-2.5-flash-preview-tts` | $0.50 | $10.00 | $0.25 | $5.00 |
 | `gemini-2.5-pro-preview-tts` | $1.00 | $20.00 | $0.50 | $10.00 |
 
-Audio ≈ 25 output tokens/second, so a 60-second clip on 3.1 Flash TTS
-≈ 1,500 tokens ≈ $0.03. A free tier is available in AI Studio.
+Audio ≈ 32 output tokens/second, so a 60-second clip on 3.1 Flash TTS
+≈ 1,920 tokens ≈ $0.038. A free tier is available in AI Studio (2.5 Pro TTS is
+paid-tier only). The 50% Batch discount makes high-volume narration much cheaper.

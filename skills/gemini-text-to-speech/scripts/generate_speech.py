@@ -21,16 +21,45 @@ Examples:
     Jane: Pretty good!" --speaker Joe:Charon --speaker Jane:Puck -o chat.wav
 """
 import argparse
+import os
 import sys
 import wave
 
 from google import genai
 from google.genai import types
 
-# Gemini TTS output is always 24 kHz / 16-bit / mono. Do not change these.
+try:
+    from google.genai import errors as genai_errors
+except ImportError:  # pragma: no cover - very old SDKs
+    genai_errors = None
+
+# Gemini TTS output is always 24 kHz / 16-bit / mono. Do not change these:
+# the bytes are headerless little-endian PCM, and wrong params play as noise.
 SAMPLE_RATE = 24000
 SAMPLE_WIDTH = 2  # bytes (16-bit)
 CHANNELS = 1
+
+
+def make_client() -> genai.Client:
+    """Build a client, failing early if no key is set.
+
+    genai.Client() reads GEMINI_API_KEY or GOOGLE_API_KEY; if both are set,
+    GOOGLE_API_KEY silently wins, so we warn about it.
+    """
+    google_key = os.environ.get("GOOGLE_API_KEY")
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not google_key and not gemini_key:
+        sys.exit("error: no API key. Set GEMINI_API_KEY (or GOOGLE_API_KEY). "
+                 "Get one at https://aistudio.google.com/apikey")
+    if google_key and gemini_key:
+        print("warning: both GOOGLE_API_KEY and GEMINI_API_KEY are set; "
+              "GOOGLE_API_KEY takes precedence.", file=sys.stderr)
+    # HttpRetryOptions was added in a newer SDK, so fall back if it's absent.
+    try:
+        return genai.Client(http_options=types.HttpOptions(
+            retry_options=types.HttpRetryOptions(attempts=5)))
+    except (AttributeError, TypeError):
+        return genai.Client()
 
 
 def write_wav(path: str, pcm: bytes) -> None:
@@ -78,7 +107,7 @@ def main() -> int:
         print("error: Gemini TTS supports at most 2 speakers.", file=sys.stderr)
         return 2
 
-    client = genai.Client()  # reads GEMINI_API_KEY / GOOGLE_API_KEY
+    client = make_client()
 
     try:
         speech_config = build_speech_config(args.voice, args.speaker)
@@ -86,19 +115,31 @@ def main() -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
-    response = client.models.generate_content(
-        model=args.model,
-        contents=args.text,
-        config=types.GenerateContentConfig(
-            response_modalities=["AUDIO"],
-            speech_config=speech_config,
-        ),
-    )
+    try:
+        response = client.models.generate_content(
+            model=args.model,
+            contents=args.text,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=speech_config,
+            ),
+        )
+    except Exception as e:  # noqa: BLE001 - clean message, not a traceback
+        if genai_errors and isinstance(e, genai_errors.APIError):
+            print(f"error: API call failed ({getattr(e, 'code', '?')}): "
+                  f"{getattr(e, 'message', e)}", file=sys.stderr)
+            return 1
+        raise
 
-    parts = response.candidates[0].content.parts
+    parts = response.candidates[0].content.parts if response.candidates else []
     pcm = next((p.inline_data.data for p in parts if getattr(p, "inline_data", None)), None)
     if pcm is None:
-        print("error: no audio returned (possibly blocked by safety filters).", file=sys.stderr)
+        feedback = getattr(response, "prompt_feedback", None)
+        detail = ""
+        if feedback and getattr(feedback, "block_reason", None):
+            detail = f" Prompt was blocked: {feedback.block_reason}."
+        print(f"error: no audio returned (possibly blocked by safety filters).{detail}",
+              file=sys.stderr)
         return 1
 
     write_wav(args.output, pcm)

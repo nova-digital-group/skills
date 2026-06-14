@@ -24,14 +24,44 @@ Examples:
 """
 import argparse
 import mimetypes
+import os
 import sys
 
 from google import genai
 from google.genai import types
 
+try:  # google.genai.errors is the canonical exception module
+    from google.genai import errors as genai_errors
+except ImportError:  # pragma: no cover - very old SDKs
+    genai_errors = None
+
 ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4",
                  "9:16", "16:9", "21:9", "1:4", "4:1", "1:8", "8:1"]
 SIZES = ["512", "1K", "2K", "4K"]
+
+
+def make_client() -> genai.Client:
+    """Build a client, failing early with a clear message if no key is set.
+
+    genai.Client() reads GEMINI_API_KEY or GOOGLE_API_KEY from the env. If both
+    are set, GOOGLE_API_KEY silently wins — a real footgun when a stale
+    GOOGLE_API_KEY shadows a fresh GEMINI_API_KEY, so we warn about it.
+    """
+    google_key = os.environ.get("GOOGLE_API_KEY")
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not google_key and not gemini_key:
+        sys.exit("error: no API key. Set GEMINI_API_KEY (or GOOGLE_API_KEY). "
+                 "Get one at https://aistudio.google.com/apikey")
+    if google_key and gemini_key:
+        print("warning: both GOOGLE_API_KEY and GEMINI_API_KEY are set; "
+              "GOOGLE_API_KEY takes precedence.", file=sys.stderr)
+    # Built-in retry/backoff covers transient 429/5xx without extra code.
+    # HttpRetryOptions was added in a newer SDK, so fall back if it's absent.
+    try:
+        return genai.Client(http_options=types.HttpOptions(
+            retry_options=types.HttpRetryOptions(attempts=5)))
+    except (AttributeError, TypeError):
+        return genai.Client()
 
 
 def guess_mime(path: str) -> str:
@@ -47,12 +77,13 @@ def main() -> int:
                    help="Model id (default: gemini-3.1-flash-image / Nano Banana 2). "
                         "Use gemini-3-pro-image for 4K / dense text.")
     p.add_argument("--aspect-ratio", choices=ASPECT_RATIOS, default=None)
-    p.add_argument("--size", choices=SIZES, default=None, help="Image size (uppercase K).")
+    p.add_argument("--size", choices=SIZES, default=None,
+                   help="Image size (uppercase K). Note: 512 is Flash-only.")
     p.add_argument("-i", "--image", action="append", default=[],
                    help="Input image(s) for editing/composition/reference. Repeatable.")
     args = p.parse_args()
 
-    client = genai.Client()  # reads GEMINI_API_KEY / GOOGLE_API_KEY
+    client = make_client()
 
     # Input images come first, then the text instruction.
     contents = []
@@ -73,18 +104,27 @@ def main() -> int:
         image_cfg["image_size"] = args.size
 
     config = types.GenerateContentConfig(
+        # Both modalities are required — dropping "TEXT" is the #1 cause of a
+        # 200 response that contains no image part.
         response_modalities=["TEXT", "IMAGE"],
         image_config=types.ImageConfig(**image_cfg) if image_cfg else None,
     )
 
-    response = client.models.generate_content(
-        model=args.model, contents=contents, config=config,
-    )
+    try:
+        response = client.models.generate_content(
+            model=args.model, contents=contents, config=config,
+        )
+    except Exception as e:  # noqa: BLE001 - surface a clean message, not a traceback
+        if genai_errors and isinstance(e, genai_errors.APIError):
+            print(f"error: API call failed ({getattr(e, 'code', '?')}): "
+                  f"{getattr(e, 'message', e)}", file=sys.stderr)
+            return 1
+        raise
 
     saved = False
     for part in response.candidates[0].content.parts:
         if getattr(part, "thought", False):
-            continue  # skip interim reasoning/thought parts
+            continue  # skip interim "thought" images; final render is the last image part
         if getattr(part, "text", None):
             print(part.text)
         elif getattr(part, "inline_data", None):
@@ -93,8 +133,18 @@ def main() -> int:
             saved = True
 
     if not saved:
+        # Distinguish a safety block from a plain empty response so the user
+        # knows whether to rephrase or to debug their request.
+        cand = response.candidates[0] if response.candidates else None
+        finish = getattr(cand, "finish_reason", None)
+        feedback = getattr(response, "prompt_feedback", None)
+        detail = ""
+        if feedback and getattr(feedback, "block_reason", None):
+            detail = f" Prompt was blocked: {feedback.block_reason}."
+        elif finish and str(finish) not in ("FinishReason.STOP", "STOP"):
+            detail = f" finish_reason={finish}."
         print("error: no image was returned (it may have been blocked by safety "
-              "filters, or the model returned only text).", file=sys.stderr)
+              f"filters, or the model returned only text).{detail}", file=sys.stderr)
         return 1
     return 0
 

@@ -38,16 +38,39 @@ Direct each speaker, then give labeled dialogue. Names must match the config.
 
 ## Inline audio tags
 
-Tags steer delivery mid-sentence. Common ones:
-`[whispers]`, `[shouting]`, `[laughs]`, `[giggles]`, `[sighs]`, `[gasp]`,
-`[crying]`, `[excited]`, `[bored]`, `[tired]`, `[curious]`, `[amazed]`,
-`[panicked]`, `[sarcastic]`, `[serious]`, `[trembling]`, `[mischievously]`.
-Pacing: `[very fast]`, `[very slow]`. Tags can combine:
-`[sarcastically, one painfully slow word at a time]`.
+Tags steer delivery mid-sentence — 3.1 Flash TTS supports **200+**. Interleave
+them with the text at the exact point the change should happen:
+`[pacing] words [emotion] words [pause] words`.
 
-> `[whispers] Hey... come closer. [shouting] BOO! [laughs] Got you!`
+- **Emotion / tone:** `[excited]`, `[bored]`, `[tired]`, `[curious]`, `[amazed]`,
+  `[panicked]`, `[sarcastic]`, `[serious]`, `[determination]`, `[enthusiasm]`,
+  `[awe]`, `[nervousness]`, `[frustration]`, `[hope]`, plus polarity
+  `[positive]` / `[neutral]` / `[negative]`.
+- **Sounds / non-verbal:** `[laughs]`, `[giggles]`, `[sighs]`, `[gasp]`,
+  `[crying]`, `[cough]`, `[mischievously]`, `[trembling]`.
+- **Pacing:** `[slow]`, `[fast]` (and descriptive `[very fast]`).
+- **Pauses:** `[short pause]`, `[long pause]` — for timing dramatic beats.
+- **Character:** creative tags work too, e.g. `[like dracula]`, `[like a cartoon dog]`.
 
-For non-English transcripts, keep the tags in **English**.
+Tags can combine descriptively: `[sarcastically, one painfully slow word at a time]`.
+
+> `[whispers] Hey... come closer. [long pause] [shouting] BOO! [laughs] Got you!`
+
+**Two hard rules:**
+- **Never place two tags directly adjacent** (`[slow][whispers]`) — separate
+  them with text or punctuation, or the model throws an error.
+- For non-English transcripts, keep the tags themselves in **English** even
+  though the spoken words are in another language.
+
+## Accents and pronunciation
+
+- **Accent:** describe it in the style direction — *"with a London Brixton
+  accent,"* *"a Southern-California valley-girl cadence."* Accents come from the
+  prompt, **not** from any language/accent parameter (there isn't one; language
+  is auto-detected from the text).
+- **Pronunciation:** there's no SSML/IPA/phoneme control. If a name or term is
+  mispronounced, **respell it phonetically** in the transcript
+  (e.g. "Cholmondeley" → "Chum-lee").
 
 ## Director's-note tips that work
 

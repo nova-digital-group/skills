@@ -13,7 +13,27 @@
 | **Nano Banana 2** | `gemini-3.1-flash-image` | High-efficiency, production-scale, fast. **Default choice.** |
 | **Nano Banana Pro** | `gemini-3-pro-image` | Reasoning core, studio-quality 4K, complex layouts, precise text. |
 | Nano Banana (original) | `gemini-2.5-flash-image` | Legacy. |
-| Imagen 4 / Fast / Ultra | `imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001` | Separate dedicated text-to-image API (not the Gemini multimodal path). Good when you want a fixed price-per-image and `numberOfImages` 1–4. |
+| Imagen 4 / Fast / Ultra | `imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001` | Separate dedicated text-to-image API (not the Gemini multimodal path). Good when you want a fixed price-per-image and `number_of_images` 1–4. |
+
+**Imagen uses a different method**, not `generate_content`:
+
+```python
+resp = client.models.generate_images(
+    model="imagen-4.0-generate-001",
+    prompt="...",
+    config=types.GenerateImagesConfig(
+        number_of_images=4,            # 1–4
+        aspect_ratio="16:9",           # 1:1, 3:4, 4:3, 9:16, 16:9
+        image_size="2K",               # 1K or 2K
+        person_generation="allow_adult",  # dont_allow / allow_adult / allow_all
+    ),
+)
+for i, gi in enumerate(resp.generated_images):
+    gi.image.save(f"out_{i}.png")
+```
+
+Imagen **does** support `negative_prompt` and `seed` (the Gemini image models do
+not). Billing is flat per image (see pricing below), not per output token.
 
 Both Gemini image models went GA on 2026-05-28; the corresponding
 `-preview` aliases (`gemini-3.1-flash-image-preview`, `gemini-3-pro-image-preview`)
@@ -47,7 +67,7 @@ for m in client.models.list():
 | Field | Values |
 |-------|--------|
 | `aspect_ratio` | `1:1 2:3 3:2 3:4 4:3 4:5 5:4 9:16 16:9 21:9` and banners `1:4 4:1 1:8 8:1` |
-| `image_size` | `512`, `1K`, `2K`, `4K` (uppercase `K`) |
+| `image_size` | `512` (**Flash only**), `1K`, `2K`, `4K` (uppercase `K`; lowercase is ignored) |
 | `output_mime_type` | `image/png`, `image/jpeg` |
 
 Also on `GenerateContentConfig`:

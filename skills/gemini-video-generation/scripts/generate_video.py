@@ -23,11 +23,43 @@ Examples:
 """
 import argparse
 import mimetypes
+import os
 import sys
 import time
 
 from google import genai
 from google.genai import types
+
+try:
+    from google.genai import errors as genai_errors
+except ImportError:  # pragma: no cover - very old SDKs
+    genai_errors = None
+
+# Veo jobs finish in ~11s to ~6min; 20 min is a generous ceiling before we stop
+# polling so the script can't hang forever on a stuck operation.
+MAX_POLL_SECONDS = 20 * 60
+
+
+def make_client() -> genai.Client:
+    """Build a client, failing early if no key is set.
+
+    genai.Client() reads GEMINI_API_KEY or GOOGLE_API_KEY; if both are set,
+    GOOGLE_API_KEY silently wins, so we warn about it.
+    """
+    google_key = os.environ.get("GOOGLE_API_KEY")
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not google_key and not gemini_key:
+        sys.exit("error: no API key. Set GEMINI_API_KEY (or GOOGLE_API_KEY). "
+                 "Get one at https://aistudio.google.com/apikey")
+    if google_key and gemini_key:
+        print("warning: both GOOGLE_API_KEY and GEMINI_API_KEY are set; "
+              "GOOGLE_API_KEY takes precedence.", file=sys.stderr)
+    # HttpRetryOptions was added in a newer SDK, so fall back if it's absent.
+    try:
+        return genai.Client(http_options=types.HttpOptions(
+            retry_options=types.HttpRetryOptions(attempts=5)))
+    except (AttributeError, TypeError):
+        return genai.Client()
 
 
 def guess_mime(path: str) -> str:
@@ -52,7 +84,7 @@ def main() -> int:
     p.add_argument("--poll-interval", type=int, default=10, help="Seconds between status checks.")
     args = p.parse_args()
 
-    client = genai.Client()  # reads GEMINI_API_KEY / GOOGLE_API_KEY
+    client = make_client()
 
     cfg = {}
     if args.aspect_ratio:
@@ -77,11 +109,25 @@ def main() -> int:
         kwargs["image"] = types.Image(image_bytes=data, mime_type=guess_mime(args.image))
 
     print("Submitting video job...")
-    operation = client.models.generate_videos(**kwargs)
+    try:
+        operation = client.models.generate_videos(**kwargs)
+    except Exception as e:  # noqa: BLE001 - clean message, not a traceback
+        if genai_errors and isinstance(e, genai_errors.APIError):
+            print(f"error: submit failed ({getattr(e, 'code', '?')}): "
+                  f"{getattr(e, 'message', e)}", file=sys.stderr)
+            return 1
+        raise
 
     print("Polling (videos take ~11s to ~6min)...")
+    waited = 0
     while not operation.done:
+        if waited >= MAX_POLL_SECONDS:
+            print(f"error: still not done after {MAX_POLL_SECONDS // 60} min — "
+                  "giving up polling. The job may still finish server-side.",
+                  file=sys.stderr)
+            return 1
         time.sleep(args.poll_interval)
+        waited += args.poll_interval
         operation = client.operations.get(operation)
         print("  ...still generating")
 

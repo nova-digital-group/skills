@@ -16,8 +16,8 @@
 | Veo 2 | `veo-2.0-generate-001` | ❌ silent | 720p | 5–8 s | — |
 
 All Veo output is **24fps**. Veo 3.1 Lite is text+image only (no extension, no
-4K) and limits prompt text to ~1,024 tokens; it's positioned at <50% the cost
-of Veo 3.1 Fast.
+4K) and limits prompt text to ~1,024 tokens; at 720p it's **≈ half** the cost of
+Veo 3.1 Fast ($0.05 vs $0.10/s).
 
 ## The async lifecycle (always)
 
@@ -45,7 +45,7 @@ URL also needs the `x-goog-api-key` header).
 |-------|---------------|-------|
 | `aspect_ratio` | `"16:9"` (default), `"9:16"` | |
 | `resolution` | `"720p"` (default), `"1080p"`, `"4k"` | 1080p/4k require 8s duration; Lite has no 4k; extension is 720p only |
-| `duration_seconds` | `"4"`, `"6"`, `"8"` | **strings** |
+| `duration_seconds` | `"4"`, `"6"`, `"8"` | docs show **strings**; some SDK builds also accept ints — pass strings to be safe, or check your installed `google-genai` |
 | `number_of_videos` | int (1; Veo 2 allows 1–2) | |
 | `negative_prompt` | string (comma-separated nouns) | exclude objects/characteristics; never use "no"/"don't" |
 | `last_frame` | `types.Image` | use with top-level `image=` for first/last-frame interpolation |
@@ -78,7 +78,8 @@ Top-level args to `generate_videos` (not in the config object):
 | Veo 2 (`veo-2.0-generate-001`) | $0.35 (silent) | — | — |
 
 So an 8-second 1080p clip costs ≈ $3.20 on Veo 3.1, ≈ $0.96 on Veo 3.1 Fast,
-and ≈ $0.64 on Veo 3.1 Lite. Pricing always includes audio.
+and ≈ $0.64 on Veo 3.1 Lite. Pricing includes audio for all **Veo 3.x** models;
+**Veo 2 is silent**, so its $0.35/s buys video only.
 
 ## Rate limits
 
